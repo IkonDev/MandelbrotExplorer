@@ -5,11 +5,11 @@ void Mandelbrot::MandelBrot(float ax,
 							float ay,
 							BitmapData& data)
 {
-	float hWidth  = m_SI.screenX / 2;
-	float hHeight = m_SI.screenY / 2;
+	float hWidth  = m_ScreenInfo.screenX / 2;
+	float hHeight = m_ScreenInfo.screenY / 2;
 
-	ComplexNumber C = ComplexNumber(1.5 * (ax - hWidth)  / (0.5 * ZoomFactor * m_SI.screenX) + xPoint,  //Real
-									      (ay - hHeight) / (0.5 * ZoomFactor * m_SI.screenY) + yPoint); //Imaginary
+	ComplexNumber C = ComplexNumber(1.5 * (ax - hWidth)  / (0.5 * ZoomFactor * m_ScreenInfo.screenX) + xPoint,  //Real
+									      (ay - hHeight) / (0.5 * ZoomFactor * m_ScreenInfo.screenY) + yPoint); //Imaginary
 	int iteration = 0;
 
 	ComplexNumber Z = C;
@@ -67,7 +67,7 @@ void Mandelbrot::CreatePalette()
 	double L = 0;
 	for (int P = 0; P < PaletteSize; ++P)
 	{
-		mRGB C(0,0,0);
+		ColorRGB C(0,0,0);
 		C = HSVtoRBG(H, 0.95, L);
 		unsigned char cAlpha = 255;
 		unsigned char cRed =   (unsigned char)(C.R);
@@ -97,7 +97,7 @@ void Mandelbrot::CreatePalette()
 
 void Mandelbrot::Process()
 {
-	fBitMap->LockBits(&Rect(0, 0, m_SI.screenX, m_SI.screenY), ImageLockModeWrite, PixelFormat32bppARGB, &bData);
+	fBitMap->LockBits(&Rect(0, 0, m_ScreenInfo.screenX, m_ScreenInfo.screenY), ImageLockModeWrite, PixelFormat32bppARGB, &bData);
 	if(GPUEnabled)
 	{
 	
@@ -152,10 +152,11 @@ void Mandelbrot::Process()
 		//	}*/
 		//}
 		size_t gWorkOffset[2] = { 0, 0 };
-		size_t gWorkSize[2] = { m_SI.screenX, m_SI.screenY };
-		size_t lWorkSize[2] = { m_SI.screenX / 4, 1 };
+
+		size_t gWorkSize[2] = { m_ScreenInfo.screenX, m_ScreenInfo.screenY };
+		size_t lWorkSize[2] = { m_ScreenInfo.screenX / 4, 1 };
 		clEnqueueNDRangeKernel(m_Queue, Fract->m_Kernel, 2, gWorkOffset, gWorkSize, lWorkSize, 0, nullptr, &mEvent);
-		size_t ImageSize = sizeof(unsigned int) * (m_SI.screenX * m_SI.screenY);
+		size_t ImageSize = sizeof(unsigned int) * (m_ScreenInfo.screenX * m_ScreenInfo.screenY);
 		Result = clEnqueueReadBuffer(m_Queue, m_PixelBuffer, CL_TRUE, 0, ImageSize, bData.Scan0, 1, &mEvent, nullptr);
 		if (Result != CL_SUCCESS)
 		{
@@ -194,14 +195,14 @@ void Mandelbrot::Process()
 		for (auto i = 0; i < NumberOfCores; ++i)
 		{
 			//Calculate chunk size
-			int Low = (i * m_SI.ChunkWidth);
-			int High = ((i + 1) * m_SI.ChunkWidth);
+			int Low = (i * m_ScreenInfo.ChunkWidth);
+			int High = ((i + 1) * m_ScreenInfo.ChunkWidth);
 
 			//Push Threads
 			ThreadList.push_back(std::thread(
 				[=]()
 			{
-				for (int y = 0; y < m_SI.screenY; ++y)
+				for (int y = 0; y < m_ScreenInfo.screenY; ++y)
 				{
 					for (auto x = Low; x < High; ++x)
 					{
@@ -226,7 +227,7 @@ void Mandelbrot::Process()
 
 }
 
-mRGB Mandelbrot::HSVtoRBG(int H, float S, float V)
+ColorRGB Mandelbrot::HSVtoRBG(int H, float S, float V)
 {
 	float r, g, b;
 	float C = V * S;
@@ -241,21 +242,21 @@ mRGB Mandelbrot::HSVtoRBG(int H, float S, float V)
 	case 5: r = C, g = 0, b = X; break;
 	}
 
-	return mRGB((r+m) * 255, (g+m) * 255, (b+m) * 255);
+	return ColorRGB((r+m) * 255, (g+m) * 255, (b+m) * 255);
 }
 
 void Mandelbrot::GetUserInfo()
 {
 	std::cout << "Set screen X size: ";
-	std::cin >> m_SI.screenX;
+	std::cin >> m_ScreenInfo.screenX;
 
 	std::cout << "Set screen Y size: ";
-	std::cin >> m_SI.screenY;
+	std::cin >> m_ScreenInfo.screenY;
 
-	m_SI.screenSize = m_SI.screenX * m_SI.screenY;
+	m_ScreenInfo.screenSize = m_ScreenInfo.screenX * m_ScreenInfo.screenY;
 
-	m_SI.ChunkSize  = m_SI.screenSize / NumberOfCores;
-	m_SI.ChunkWidth = m_SI.screenX    / NumberOfCores;
+	m_ScreenInfo.ChunkSize  = m_ScreenInfo.screenSize / NumberOfCores;
+	m_ScreenInfo.ChunkWidth = m_ScreenInfo.screenX    / NumberOfCores;
 
 	std::cout << "Enable GPU Processing? ";
 
@@ -285,13 +286,15 @@ void Mandelbrot::Startup()
 	glfwInit();
 
 	//Seed std::rand
-	srand(6565);
+	srand(0);
 
 	//Create the ScreenInfo and fill it
-	m_SI = ScreenInfo();
+	m_ScreenInfo = ScreenInfo();
 	GetUserInfo();
 
+	//Create palette
 	CreatePalette();
+
 	//Create GDI & Startup
 	GdiplusStartup(&GDI, &GdiplusStartupInput(), NULL);
 
@@ -301,7 +304,7 @@ void Mandelbrot::Startup()
 	graphics = new Graphics(ConDC);
 	
 	//Create a Bitmap
-	fBitMap = new Bitmap(m_SI.screenX, m_SI.screenY, PixelFormat32bppARGB);
+	fBitMap = new Bitmap(m_ScreenInfo.screenX, m_ScreenInfo.screenY, PixelFormat32bppARGB);
 
 	if (GPUEnabled)
 	{
@@ -344,9 +347,9 @@ void Mandelbrot::Startup()
 
 		Fract->ExtractKernel(kProgram->m_KernelProgram, "Mandelbrot");
 
-		fBitMap->LockBits(&Rect(0, 0, m_SI.screenX, m_SI.screenY), ImageLockModeWrite, PixelFormat32bppARGB, &bData);
+		fBitMap->LockBits(&Rect(0, 0, m_ScreenInfo.screenX, m_ScreenInfo.screenY), ImageLockModeWrite, PixelFormat32bppARGB, &bData);
 		//Scan0
-		size_t ImageSize = sizeof(unsigned int) * (m_SI.screenX * m_SI.screenY);
+		size_t ImageSize = sizeof(unsigned int) * (m_ScreenInfo.screenX * m_ScreenInfo.screenY);
 		m_PixelBuffer = clCreateBuffer(m_Context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
 			ImageSize, bData.Scan0, &Result);
 		if (Result != CL_SUCCESS)
@@ -414,11 +417,11 @@ void Mandelbrot::Shutdown()
 
 void Mandelbrot::Draw()
 {
-	//system("cls");
+	system("cls");
 	Color cCol = Color::Red;
 
-	float hWidth =  m_SI.screenX / 2;
-	float hHeight = m_SI.screenY / 2;
+	float hWidth =  m_ScreenInfo.screenX / 2;
+	float hHeight = m_ScreenInfo.screenY / 2;
 
 	//Draw a cursor pixel
 	//Y = -1
@@ -458,7 +461,7 @@ void Mandelbrot::Draw()
 					  hHeight + 1,
 					  cCol);
 	
-	graphics->DrawImage(fBitMap, Rect(0, 0, m_SI.screenX, m_SI.screenY));
+	graphics->DrawImage(fBitMap, Rect(0, 0, m_ScreenInfo.screenX, m_ScreenInfo.screenY));
 
 	//std::cout.precision(15);
 	//std::cout << "Point X: " << xPoint << std::endl;
@@ -474,7 +477,7 @@ bool Mandelbrot::TakeInput()
 
 	char Key;
 	Key = _getch();
-
+	
 	if (Key != 0)
 	{
 		if (Key == 45) // Minus
@@ -561,6 +564,9 @@ bool Mandelbrot::TakeInput()
 				system("cls");
 			}
 		}
+
+
+		
 		return true;
 	}
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <iomanip>
+//#include <iomanip>
 #include <conio.h>
 #include <thread>
 #include <vector>
@@ -17,7 +17,7 @@
 
 using namespace Gdiplus;
 
-static unsigned int MaxIterations = 256;
+static unsigned int MaxIterations = 16;
 #define PaletteSize 64
 
 struct ScreenInfo
@@ -25,6 +25,7 @@ struct ScreenInfo
 	unsigned int screenX;
 	unsigned int screenY;
 	unsigned int screenSize;
+
 	unsigned int ChunkSize;
 	unsigned int ChunkWidth;
 };
@@ -58,14 +59,22 @@ public:
 	}
 };
 
-struct mRGB
+struct ColorRGB
 {
-	mRGB(unsigned char r, unsigned char g, unsigned char b)
+	ColorRGB()
+	{
+		R = 0;
+		G = 0;
+		B = 0;
+	}
+
+	ColorRGB(unsigned char r, unsigned char g, unsigned char b)
 	{
 		R = r;
 		G = g;
 		B = b;
 	}
+
 	unsigned char R, G, B;
 };
 
@@ -86,15 +95,11 @@ public:
 
 private:
 
-	void MandelBrot(float ax,
-					float ay,
-					BitmapData& data);
+	void MandelBrot(float ax, float ay, BitmapData& data);
 
 	void CreatePalette();
 
-	mRGB HSVtoRBG(int H, float S, float V);
-
-
+	ColorRGB HSVtoRBG(int H, float S, float V);
 
 	void GetUserInfo();
 
@@ -105,15 +110,12 @@ private:
 	HDC ConDC;
 	Graphics* graphics;
 
-	ScreenInfo m_SI;
+	ScreenInfo m_ScreenInfo;
 
 	unsigned int Palette[PaletteSize];
 	BitmapData bData;
 	std::vector<std::thread> ThreadList;
 
-	//double ZoomFactor = 1;
-	//double xPoint = 0;
-	//double yPoint = 0;
 	double ZoomFactor = 1;
 	double xPoint = 0;
 	double yPoint = 0;
@@ -126,6 +128,7 @@ private:
 	cl_command_queue m_Queue;
 	cl_mem           m_PixelBuffer;
 	cl_mem			 m_Palette;
+
 	double RenderTime;
 	Kernel* Fract;
 	KernelProgram* kProgram;
