@@ -285,7 +285,7 @@ void Mandelbrot::Startup()
 	glfwInit();
 
 	//Seed std::rand
-	srand(6666);
+	srand(6565);
 
 	//Create the ScreenInfo and fill it
 	m_SI = ScreenInfo();
@@ -460,7 +460,7 @@ void Mandelbrot::Draw()
 	
 	graphics->DrawImage(fBitMap, Rect(0, 0, m_SI.screenX, m_SI.screenY));
 
-	//std::cout.precision(20);
+	//std::cout.precision(15);
 	//std::cout << "Point X: " << xPoint << std::endl;
 	//std::cout << "Point Y: " << yPoint << std::endl;
 	//std::cout << "Zoom: "       << ZoomFactor    << std::endl;

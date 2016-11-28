@@ -17,7 +17,7 @@
 
 using namespace Gdiplus;
 
-static unsigned int MaxIterations = 512;
+static unsigned int MaxIterations = 256;
 #define PaletteSize 64
 
 struct ScreenInfo
